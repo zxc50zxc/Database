@@ -106,6 +106,7 @@ def render_language_switch() -> None:
         horizontal=True,
         format_func=lambda x: t("lang_ar") if x == "ar" else t("lang_en"),
         label_visibility="collapsed",
+        key="sidebar_ui_lang",
     )
     if choice != st.session_state.get("ui_lang", "ar"):
         st.session_state.ui_lang = choice
@@ -116,8 +117,8 @@ def render_login(conn) -> None:
     st.markdown(f"## {t('login_title')}")
     st.caption(t("login_caption"))
     with st.form("login_form", clear_on_submit=False):
-        username = st.text_input(t("username"))
-        password = st.text_input(t("password"), type="password")
+        username = st.text_input(t("username"), key="login_username")
+        password = st.text_input(t("password"), type="password", key="login_password")
         submitted = st.form_submit_button(t("login_btn"))
     if submitted:
         try:
@@ -165,7 +166,7 @@ def patient_dashboard(conn, user: dict) -> None:
         c1, c2, c3 = st.columns(3)
         with c1:
             clinic_names = {r["name"]: r["id"] for r in clinics}
-            clinic_pick = st.selectbox(t("clinic"), list(clinic_names.keys()))
+            clinic_pick = st.selectbox(t("clinic"), list(clinic_names.keys()), key="pat_book_clinic")
             clinic_id = clinic_names[clinic_pick]
         filtered_docs = doc_df[doc_df["clinic_id"] == clinic_id] if not doc_df.empty else doc_df
         with c2:
@@ -175,15 +176,22 @@ def patient_dashboard(conn, user: dict) -> None:
             else:
                 doc_labels = filtered_docs.apply(lambda r: f"{r['name']} (#{r['id']})", axis=1).tolist()
                 doc_ids = filtered_docs["id"].tolist()
-                idx = st.selectbox(t("doctor"), range(len(doc_ids)), format_func=lambda i: doc_labels[i])
+                idx = st.selectbox(
+                    t("doctor"),
+                    range(len(doc_ids)),
+                    format_func=lambda i: doc_labels[i],
+                    key="pat_book_doctor",
+                )
                 doc_id = int(doc_ids[idx])
         with c3:
             min_d = date.today()
-            picked = st.date_input(t("date"), min_value=min_d)
+            picked = st.date_input(t("date"), min_value=min_d, key="pat_book_date")
 
-        reason = st.selectbox(t("visit_reason"), reason_opts, format_func=reason_fmt)
-        duration = st.radio(t("duration"), [30, 60], horizontal=True)
-        notes = st.text_area(t("notes"), "")
+        reason = st.selectbox(
+            t("visit_reason"), reason_opts, format_func=reason_fmt, key="pat_book_reason"
+        )
+        duration = st.radio(t("duration"), [30, 60], horizontal=True, key="pat_book_duration")
+        notes = st.text_area(t("notes"), "", key="pat_book_notes")
 
         slots: List = []
         if doc_id is not None:
@@ -200,8 +208,13 @@ def patient_dashboard(conn, user: dict) -> None:
         else:
             suf = t("min_suffix")
             labels = [f"{s.strftime('%Y-%m-%d %H:%M')} — {d} {suf}" for s, d in slots]
-            choice = st.selectbox(t("pick_time"), range(len(labels)), format_func=lambda i: labels[i])
-            if st.button(t("confirm_book"), type="primary"):
+            choice = st.selectbox(
+                t("pick_time"),
+                range(len(labels)),
+                format_func=lambda i: labels[i],
+                key="pat_book_slot",
+            )
+            if st.button(t("confirm_book"), type="primary", key="pat_book_confirm"):
                 start, dur = slots[choice]
                 v = validate_new_appointment(start, dur)
                 if not v.ok:
@@ -233,7 +246,7 @@ def patient_dashboard(conn, user: dict) -> None:
         if df.empty:
             st.info(t("no_appts"))
         else:
-            q = st.text_input(t("search_table"), "")
+            q = st.text_input(t("search_table"), "", key="pat_hist_search")
             view = df
             if q:
                 mask = view.astype(str).apply(lambda c: c.str.contains(q, case=False)).any(axis=1)
@@ -249,7 +262,12 @@ def patient_dashboard(conn, user: dict) -> None:
             return
         ids = df["id"].tolist()
         labels = [f"#{i} — {r['start_at']} — {r['doctor_name']}" for i, r in zip(ids, df.to_dict("records"))]
-        idx = st.selectbox(t("pick_appt"), range(len(ids)), format_func=lambda i: labels[i])
+        idx = st.selectbox(
+            t("pick_appt"),
+            range(len(ids)),
+            format_func=lambda i: labels[i],
+            key="pat_edit_pick_appt",
+        )
         appt_id = int(ids[idx])
         row = db.fetch_appointment(conn, appt_id)
         if row is None:
@@ -259,7 +277,7 @@ def patient_dashboard(conn, user: dict) -> None:
 
         col_a, col_b = st.columns(2)
         with col_a:
-            if st.button(t("cancel_appt")):
+            if st.button(t("cancel_appt"), key="pat_edit_cancel"):
                 vr = validate_reschedule_or_cancel(start_at)
                 if not vr.ok:
                     show_validation_error(vr)
@@ -274,9 +292,9 @@ def patient_dashboard(conn, user: dict) -> None:
         with col_b:
             st.caption(t("edit_hint"))
 
-        new_date = st.date_input(t("new_date"), value=start_at.date())
-        new_time = st.time_input(t("new_time"), value=start_at.time())
-        if st.button(t("save_edit")):
+        new_date = st.date_input(t("new_date"), value=start_at.date(), key="pat_edit_new_date")
+        new_time = st.time_input(t("new_time"), value=start_at.time(), key="pat_edit_new_time")
+        if st.button(t("save_edit"), key="pat_edit_save"):
             new_start = datetime.combine(new_date, new_time)
             vr = validate_reschedule_or_cancel(start_at)
             if not vr.ok:
@@ -324,9 +342,9 @@ def receptionist_dashboard(conn, user: dict) -> None:
     with t1:
         st.markdown(f"#### {t('add_patient')}")
         with st.form("new_patient"):
-            name = st.text_input(t("name"))
-            phone = st.text_input(t("phone"))
-            email = st.text_input(t("email"))
+            name = st.text_input(t("name"), key="recv_newpt_name")
+            phone = st.text_input(t("phone"), key="recv_newpt_phone")
+            email = st.text_input(t("email"), key="recv_newpt_email")
             if st.form_submit_button(t("save_patient")):
                 try:
                     new_id = db.insert_patient(conn, name, phone, email)
@@ -352,16 +370,28 @@ def receptionist_dashboard(conn, user: dict) -> None:
             df["start_at"] = pd.to_datetime(df["start_at"])
             c1, c2, c3 = st.columns(3)
             with c1:
-                d_from = st.date_input(t("from_date"), value=date.today() - timedelta(days=7))
+                d_from = st.date_input(
+                    t("from_date"),
+                    value=date.today() - timedelta(days=7),
+                    key="recv_appt_filter_dfrom",
+                )
             with c2:
-                d_to = st.date_input(t("to_date"), value=date.today() + timedelta(days=30))
+                d_to = st.date_input(
+                    t("to_date"),
+                    value=date.today() + timedelta(days=30),
+                    key="recv_appt_filter_dto",
+                )
             with c3:
                 st.write("")
                 st.caption(t("filter_hint"))
             doc_names = sorted(df["doctor_name"].dropna().unique().tolist())
             clin_names = sorted(df["clinic_name"].dropna().unique().tolist())
-            doc_f = st.multiselect(t("doctor"), doc_names, default=doc_names)
-            cl_f = st.multiselect(t("clinic"), clin_names, default=clin_names)
+            doc_f = st.multiselect(
+                t("doctor"), doc_names, default=doc_names, key="recv_appt_filter_doctors"
+            )
+            cl_f = st.multiselect(
+                t("clinic"), clin_names, default=clin_names, key="recv_appt_filter_clinics"
+            )
             view = df[(df["start_at"].dt.date >= d_from) & (df["start_at"].dt.date <= d_to)]
             if doc_f:
                 view = view[view["doctor_name"].isin(doc_f)]
@@ -380,6 +410,7 @@ def receptionist_dashboard(conn, user: dict) -> None:
                 ("new", "edit"),
                 horizontal=True,
                 format_func=lambda x: t("mode_new") if x == "new" else t("mode_edit"),
+                key="recv_appt_mode",
             )
             appt_id = None
             existing = None
@@ -388,15 +419,15 @@ def receptionist_dashboard(conn, user: dict) -> None:
                     st.warning(t("no_appts_edit"))
                 else:
                     ids = df["id"].tolist()
-                    pick = st.selectbox(t("pick_appt"), ids)
+                    pick = st.selectbox(t("pick_appt"), ids, key="recv_appt_pick_id")
                     appt_id = int(pick)
                     existing = db.fetch_appointment(conn, appt_id)
 
             if mode == "new" or (mode == "edit" and existing is not None):
                 doc_map = {f"{r['name']} (#{r['id']})": r["id"] for r in doctors}
                 pat_map = {f"{r['name']} (#{r['id']})": r["id"] for r in patients}
-                dlab = st.selectbox(t("doctor"), list(doc_map.keys()))
-                plab = st.selectbox(t("patient"), list(pat_map.keys()))
+                dlab = st.selectbox(t("doctor"), list(doc_map.keys()), key="recv_appt_form_doctor")
+                plab = st.selectbox(t("patient"), list(pat_map.keys()), key="recv_appt_form_patient")
                 doc_id = doc_map[dlab]
                 pat_id = pat_map[plab]
                 clinic_id = int(next(r["clinic_id"] for r in doctors if r["id"] == doc_id))
@@ -410,13 +441,15 @@ def receptionist_dashboard(conn, user: dict) -> None:
                     if existing
                     else datetime.strptime("09:00", "%H:%M").time()
                 )
-                day = st.date_input(t("date"), value=default_day)
-                tm = st.time_input(t("time"), value=default_t)
+                day = st.date_input(t("date"), value=default_day, key="recv_appt_form_date")
+                tm = st.time_input(t("time"), value=default_t, key="recv_appt_form_time")
                 dur_vals = [30, 60]
                 dur_idx = 0
                 if existing and int(existing["duration_minutes"]) in dur_vals:
                     dur_idx = dur_vals.index(int(existing["duration_minutes"]))
-                duration = st.selectbox(t("duration_min"), dur_vals, index=dur_idx)
+                duration = st.selectbox(
+                    t("duration_min"), dur_vals, index=dur_idx, key="recv_appt_form_duration"
+                )
                 reason_opts = [
                     VisitReason.ROUTINE.value,
                     VisitReason.FOLLOW_UP.value,
@@ -435,6 +468,7 @@ def receptionist_dashboard(conn, user: dict) -> None:
                     reason_opts,
                     index=r_idx,
                     format_func=lambda x: reason_labels[x],
+                    key="recv_appt_form_reason",
                 )
                 status_opts = [
                     AppointmentStatus.CONFIRMED.value,
@@ -451,11 +485,14 @@ def receptionist_dashboard(conn, user: dict) -> None:
                     status_opts,
                     index=s_idx,
                     format_func=status_label,
+                    key="recv_appt_form_status",
                 )
-                notes = st.text_area(t("notes"), value=existing["notes"] if existing else "")
+                notes = st.text_area(
+                    t("notes"), value=existing["notes"] if existing else "", key="recv_appt_form_notes"
+                )
 
                 start = datetime.combine(day, tm)
-                if st.button(t("save_appt")):
+                if st.button(t("save_appt"), key="recv_appt_save"):
                     is_new = mode == "new"
                     old_start = parse_iso_datetime(existing["start_at"]) if existing else None
                     if is_new:
@@ -547,7 +584,7 @@ def receptionist_dashboard(conn, user: dict) -> None:
                                     show_error_msg(t("fail_save"), str(exc))
 
                 if mode == "edit" and appt_id:
-                    if st.button(t("delete_appt")):
+                    if st.button(t("delete_appt"), key="recv_appt_delete"):
                         try:
                             db.delete_appointment(conn, appt_id)
                             conn.commit()
@@ -567,18 +604,19 @@ def receptionist_dashboard(conn, user: dict) -> None:
                 t("doctor"),
                 range(len(docs)),
                 format_func=lambda i: doc_labels[i],
+                key="recv_avail_doctor_idx",
             )
             doc_id = int(dict(docs[d_idx])["id"])
             st.write(t("weekday_help"))
             rows = db.list_doctor_availability(conn, doc_id)
             st.dataframe(rows_to_df(rows), use_container_width=True, hide_index=True)
-            wd = st.number_input(t("weekday_num"), min_value=0, max_value=6, value=6)
+            wd = st.number_input(t("weekday_num"), min_value=0, max_value=6, value=6, key="recv_avail_weekday")
             st1, st2 = st.columns(2)
             with st1:
-                s_t = st.text_input(t("from_hhmm"), value="08:00")
+                s_t = st.text_input(t("from_hhmm"), value="08:00", key="recv_avail_from_hhmm")
             with st2:
-                e_t = st.text_input(t("to_hhmm"), value="17:00")
-            if st.button(t("add_slot")):
+                e_t = st.text_input(t("to_hhmm"), value="17:00", key="recv_avail_to_hhmm")
+            if st.button(t("add_slot"), key="recv_avail_add_slot"):
                 try:
                     db.insert_availability(conn, doc_id, int(wd), s_t, e_t)
                     conn.commit()
@@ -586,8 +624,8 @@ def receptionist_dashboard(conn, user: dict) -> None:
                     st.rerun()
                 except Exception as exc:  # noqa: BLE001
                     show_error_msg(t("fail_slot_add"), str(exc))
-            del_id = st.number_input(t("del_slot_id"), min_value=0, value=0)
-            if del_id > 0 and st.button(t("del_slot")):
+            del_id = st.number_input(t("del_slot_id"), min_value=0, value=0, key="recv_avail_del_id")
+            if del_id > 0 and st.button(t("del_slot"), key="recv_avail_del_slot"):
                 try:
                     db.delete_availability(conn, int(del_id))
                     conn.commit()
@@ -623,7 +661,11 @@ def receptionist_dashboard(conn, user: dict) -> None:
         st.dataframe(up, use_container_width=True, hide_index=True)
 
         st.markdown(f"#### {t('csv_export')}")
-        table = st.selectbox(t("table"), ["appointments", "patients", "doctors", "clinics"])
+        table = st.selectbox(
+            t("table"),
+            ["appointments", "patients", "doctors", "clinics"],
+            key="recv_export_table",
+        )
         try:
             data = conn.execute(f"SELECT * FROM {table}").fetchall()
             pdf = pd.DataFrame([dict(r) for r in data])
@@ -645,14 +687,14 @@ def doctor_dashboard(conn, user: dict) -> None:
         show_error_msg(t("not_doctor"))
         return
     st.subheader(t("doctor_board"))
-    day = st.date_input(t("day"), value=date.today())
+    day = st.date_input(t("day"), value=date.today(), key="dr_schedule_day")
     rows = db.fetch_doctor_appointments_for_date(conn, did, datetime.combine(day, time.min))
     df = rows_to_df(rows)
     if df.empty:
         st.info(t("no_appts_day"))
     else:
         st.dataframe(df, use_container_width=True, hide_index=True)
-        appt_id = st.selectbox(t("pick_appt_status"), df["id"].tolist())
+        appt_id = st.selectbox(t("pick_appt_status"), df["id"].tolist(), key="dr_pick_appt_id")
         status_opts = [
             AppointmentStatus.COMPLETED.value,
             AppointmentStatus.LATE.value,
@@ -660,8 +702,10 @@ def doctor_dashboard(conn, user: dict) -> None:
             AppointmentStatus.CONFIRMED.value,
             AppointmentStatus.PENDING.value,
         ]
-        new_status = st.selectbox(t("status"), status_opts, format_func=status_label)
-        if st.button(t("update_status")):
+        new_status = st.selectbox(
+            t("status"), status_opts, format_func=status_label, key="dr_new_status"
+        )
+        if st.button(t("update_status"), key="dr_update_status_btn"):
             try:
                 db.update_appointment_status(conn, int(appt_id), new_status)
                 conn.commit()
@@ -688,7 +732,7 @@ def main() -> None:
         if user:
             st.write(f"**{user['username']}**")
             st.caption(str(user["role"].value))
-            if st.button(t("logout")):
+            if st.button(t("logout"), key="sidebar_logout"):
                 auth.logout_user()
                 st.rerun()
         with st.expander(t("demo_logins")):
