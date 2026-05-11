@@ -133,6 +133,17 @@ def render_login(conn) -> None:
         st.rerun()
 
 
+def render_role_help(role: UserRole) -> None:
+    """In-page user guide for the current role."""
+    with st.expander(f"ℹ️ {t('help_guide_title')}", expanded=False):
+        if role == UserRole.PATIENT:
+            st.markdown(t("help_patient_md"))
+        elif role == UserRole.RECEPTIONIST:
+            st.markdown(t("help_reception_md"))
+        elif role == UserRole.DOCTOR:
+            st.markdown(t("help_doctor_md"))
+
+
 def rows_to_df(rows) -> pd.DataFrame:
     if not rows:
         return pd.DataFrame()
@@ -146,6 +157,7 @@ def patient_dashboard(conn, user: dict) -> None:
         return
 
     st.subheader(t("patient_board"))
+    render_role_help(UserRole.PATIENT)
     tab1, tab2, tab3 = st.tabs([t("tab_book"), t("tab_mine"), t("tab_edit")])
 
     doctors = db.list_doctors(conn)
@@ -337,6 +349,7 @@ def patient_dashboard(conn, user: dict) -> None:
 
 def receptionist_dashboard(conn, user: dict) -> None:
     st.subheader(t("reception_board"))
+    render_role_help(UserRole.RECEPTIONIST)
     t1, t2, t3, t4 = st.tabs([t("tab_patients"), t("tab_appts"), t("tab_hours"), t("tab_reports")])
 
     with t1:
@@ -353,12 +366,67 @@ def receptionist_dashboard(conn, user: dict) -> None:
                 except Exception as exc:  # noqa: BLE001
                     show_error_msg(t("fail_patient"), str(exc))
         st.markdown(f"#### {t('patient_list')}")
+        st.caption(t("patient_editor_tip"))
         pts = rows_to_df(db.list_patients(conn))
         q = st.text_input(t("search_patient"), key="pq")
         if not pts.empty and q:
             m = pts.astype(str).apply(lambda c: c.str.contains(q, case=False)).any(axis=1)
             pts = pts[m]
-        st.dataframe(pts, use_container_width=True, hide_index=True)
+        if pts.empty:
+            st.info(t("no_patients"))
+        else:
+            pts_edit = pts.copy()
+            pts_edit["id"] = pts_edit["id"].astype(int)
+            for col in ("name", "phone", "email", "created_at"):
+                if col in pts_edit.columns:
+                    pts_edit[col] = pts_edit[col].astype(str)
+            snapshot = pts_edit.copy()
+            edited = st.data_editor(
+                pts_edit,
+                use_container_width=True,
+                hide_index=True,
+                num_rows="fixed",
+                key="recv_patient_grid",
+                column_config={
+                    "id": st.column_config.NumberColumn("ID", disabled=True, format="%d"),
+                    "created_at": st.column_config.TextColumn(t("created_at_label"), disabled=True),
+                    "name": st.column_config.TextColumn(t("name"), required=True),
+                    "phone": st.column_config.TextColumn(t("phone")),
+                    "email": st.column_config.TextColumn(t("email")),
+                },
+            )
+            if st.button(t("save_patient_table"), key="recv_patient_grid_save"):
+                orig_by_id = snapshot.set_index("id")
+                changed = 0
+                try:
+                    for _, row in edited.iterrows():
+                        pid = int(row["id"])
+                        if pid not in orig_by_id.index:
+                            continue
+                        o = orig_by_id.loc[pid]
+                        n = str(row.get("name", "")).strip()
+                        ph = str(row.get("phone", "")).strip()
+                        em = str(row.get("email", "")).strip()
+                        if not n:
+                            show_error_msg(t("patient_name_required"))
+                            raise ValueError("validation")
+                        on = str(o["name"]).strip()
+                        op = str(o["phone"]).strip()
+                        oe = str(o["email"]).strip()
+                        if on != n or op != ph or oe != em:
+                            db.update_patient(conn, pid, n, ph, em)
+                            changed += 1
+                    conn.commit()
+                    if changed > 0:
+                        st.success(f"{t('patients_saved_count')} ({changed})")
+                    else:
+                        st.info(t("patients_no_changes"))
+                    st.rerun()
+                except ValueError:
+                    pass
+                except Exception as exc:  # noqa: BLE001
+                    conn.rollback()
+                    show_error_msg(t("fail_patient"), str(exc))
 
     with t2:
         st.markdown(f"#### {t('manage_appts')}")
@@ -687,6 +755,7 @@ def doctor_dashboard(conn, user: dict) -> None:
         show_error_msg(t("not_doctor"))
         return
     st.subheader(t("doctor_board"))
+    render_role_help(UserRole.DOCTOR)
     day = st.date_input(t("day"), value=date.today(), key="dr_schedule_day")
     rows = db.fetch_doctor_appointments_for_date(conn, did, datetime.combine(day, time.min))
     df = rows_to_df(rows)
@@ -729,6 +798,9 @@ def main() -> None:
         st.markdown(f"### 🏥 {t('app_name')}")
         render_language_switch()
         st.divider()
+        if user is None:
+            with st.expander(f"ℹ️ {t('help_guide_title')}", expanded=False):
+                st.markdown(t("help_login_md"))
         if user:
             st.write(f"**{user['username']}**")
             st.caption(str(user["role"].value))

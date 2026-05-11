@@ -130,6 +130,53 @@ _AR = {
     "fail_slot_del": "تعذر الحذف.",
     "no_appts_day": "لا توجد مواعيد في هذا اليوم.",
     "no_doctors_list": "لا يوجد أطباء في القائمة.",
+    "help_guide_title": "دليل الاستخدام والملاحظات",
+    "help_login_md": """
+**تسجيل الدخول**
+- أدخل اسم المستخدم وكلمة المرور الصحيحة، ثم اضغط **دخول**.
+- للتجربة: افتح **حسابات تجريبية** في الشريط الجانبي لمعرفة أسماء المستخدمين.
+
+**اللغة**
+- غيّر اللغة من أعلى الشريط الجانبي؛ الواجهة تدعم العربية والإنجليزية.
+""",
+    "help_patient_md": """
+**حجز موعد**
+- اختر العيادة ثم الطبيب والتاريخ والمدة، ثم اختر أحد الأوقات المتاحة واضغط **تأكيد الحجز**.
+
+**مواعيدي**
+- استخدم البحث لتصفية الجدول.
+
+**تعديل / إلغاء**
+- الإلغاء أو تغيير الموعد يتطلب إشعاراً قبل **24 ساعة** من وقت الموعد (قاعدة العيادة).
+- لا يمكن حجز موعد في الماضي أو خارج أوقات العمل المعتمدة.
+""",
+    "help_reception_md": """
+**المرضى**
+- أضف مريضاً جديداً من النموذج، أو عدّل بيانات المرضى في الجدول ثم اضغط **حفظ تعديلات الجدول**.
+- عمودا **المعرّف** و**تاريخ الإنشاء** للقراءة فقط لحماية الربط مع المواعيد.
+
+**المواعيد**
+- صفِّ الجدول بالتاريخ والطبيب والعيادة؛ أنشئ موعداً جديداً أو عدّل موعداً قائماً.
+- احذر التعارض: لا يُسمح بموعدين متداخلين لنفس الطبيب.
+
+**أوقات الأطباء**
+- أضف فترات العمل حسب يوم الأسبوع (0 = الاثنين … 6 = الأحد في بايثون).
+
+**التقارير والتصدير**
+- راقب المواعيد والتنبيهات؛ نزّل CSV عند الحاجة.
+""",
+    "help_doctor_md": """
+**جدول اليوم**
+- اختر التاريخ لعرض مواعيدك.
+- حدّث **حالة** الموعد (مكتمل، متأخر، ملغى، …) ثم اضغط **تحديث الحالة**.
+""",
+    "patient_editor_tip": "عدّل الاسم أو الهاتف أو البريد في الجدول، ثم احفظ التغييرات. المعرّف وتاريخ الإنشاء غير قابلين للتعديل.",
+    "created_at_label": "تاريخ الإنشاء",
+    "save_patient_table": "حفظ تعديلات الجدول",
+    "patients_saved_count": "تم تحديث سجلات المرضى.",
+    "patients_no_changes": "لا توجد تغييرات للحفظ.",
+    "patient_name_required": "اسم المريض لا يمكن أن يكون فارغاً.",
+    "no_patients": "لا يوجد مرضى مطابقون للبحث أو القائمة فارغة.",
 }
 
 _EN = {
@@ -256,6 +303,53 @@ _EN = {
     "fail_slot_del": "Could not delete slot.",
     "no_appts_day": "No appointments on this day.",
     "no_doctors_list": "No doctors in the list.",
+    "help_guide_title": "User guide & tips",
+    "help_login_md": """
+**Sign in**
+- Enter your username and password, then **Sign in**.
+- Open **Demo accounts** in the sidebar for sample usernames.
+
+**Language**
+- Switch **العربية / English** at the top of the sidebar.
+""",
+    "help_patient_md": """
+**Book appointment**
+- Pick clinic, doctor, date, and duration, choose a free slot, then **Confirm booking**.
+
+**My appointments**
+- Use search to filter the table.
+
+**Edit / cancel**
+- Cancelling or rescheduling needs **24 hours** notice before the appointment time.
+- Past times and outside clinic hours are not allowed.
+""",
+    "help_reception_md": """
+**Patients**
+- Add new patients via the form, or edit rows in the table then **Save table changes**.
+- **ID** and **Created at** are read-only to protect links to appointments.
+
+**Appointments**
+- Filter by date, doctor, and clinic; create new appointments or edit existing ones.
+- Avoid overlaps: the same doctor cannot have two active appointments at the same time.
+
+**Doctor hours**
+- Add weekly availability using weekday numbers (0 = Monday … 6 = Sunday in Python).
+
+**Reports & export**
+- Review metrics and alerts; download CSV when needed.
+""",
+    "help_doctor_md": """
+**Schedule**
+- Pick a date to see appointments.
+- Update appointment **status**, then **Update status**.
+""",
+    "patient_editor_tip": "Edit name, phone, or email in the grid, then save. ID and created date cannot be changed.",
+    "created_at_label": "Created at",
+    "save_patient_table": "Save table changes",
+    "patients_saved_count": "Patient records updated.",
+    "patients_no_changes": "No changes to save.",
+    "patient_name_required": "Patient name cannot be empty.",
+    "no_patients": "No patients match your search, or the list is empty.",
 }
 
 

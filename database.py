@@ -298,6 +298,14 @@ def insert_patient(conn: sqlite3.Connection, name: str, phone: str, email: str) 
     return int(cur.lastrowid)
 
 
+def update_patient(conn: sqlite3.Connection, patient_id: int, name: str, phone: str, email: str) -> None:
+    """Update patient contact fields (does not change id or created_at)."""
+    conn.execute(
+        "UPDATE patients SET name = ?, phone = ?, email = ? WHERE id = ?",
+        (name.strip(), phone.strip(), email.strip(), int(patient_id)),
+    )
+
+
 def list_doctor_availability(conn: sqlite3.Connection, doctor_id: Optional[int] = None) -> List[sqlite3.Row]:
     if doctor_id is None:
         return list(conn.execute("SELECT * FROM doctor_availability ORDER BY doctor_id, weekday"))
